@@ -15,23 +15,31 @@ LIGHT_HOSTS = {
 
 
 def read_incoming_message():
-    with IMAPClient(host=HOST) as c:
-        c.login(USERNAME, PASSWORD)
-        c.select_folder("INBOX")
-        messages = c.gmail_search(f"from:{USERNAME} newer_than:1d")
-        messages.reverse()
-        if len(messages) > 0:
-            for mail_id, data in c.fetch(messages[0], ['BODY[TEXT]']).items():
-                body = data[b'BODY[TEXT]'].decode("utf-8")
-                print(body)
-                regex = r'((light|door) \w+ ?\w*)'
-                if re.search(regex, body):
-                    match = re.search(regex, body)
-                    print(match)
-                    print(f"message: {match.group(1)}")
-                    execute_message(match.group(1))
-        else:
-            print("No messages returned from gmail query.")
+    try:
+        with IMAPClient(host=HOST) as c:  # Open a new connection
+            c.login(USERNAME, PASSWORD)
+            c.select_folder("INBOX")
+            messages = c.gmail_search(f"newer_than:1d")
+            messages.reverse()  # Newest message should be 0 position
+            if len(messages) > 0:  # If there are any messages
+                for mail_id, data in c.fetch(messages[0], ['RFC822']).items():  # Get first message
+                    rfc = data[b'RFC822'].decode("utf-8")  # RFC = headers + body
+                    command_regex = r'((light|door) \w+ ?\w*)'
+                    sender_regex = r'('+SENDER_REGEX+')'
+                    if re.search(sender_regex, rfc):  # Is trigger from approved source?
+                        print(rfc)
+                        match = re.search(command_regex, rfc)  # Does body include valid command?
+                        if not match:
+                            print("No execution keyword found.")
+                            return
+                        print(f"message: {match.group(1)}")
+                        execute_message(match.group(1))  # If valid, then execute
+                    else:
+                        print("Mail not sent from approved sender.")
+            else:
+                print("No messages returned from gmail query.")
+    except Exception as e:
+        print(e)
 
 
 def execute_message(message):
@@ -46,34 +54,29 @@ def execute_message(message):
             print("Execute Door")
             request_url = f"{DOOR_HOST}{tokenized_message[1]}{LOG_ENTRY}"
         print(request_url)
-        r = requests.get(request_url, verify=False)
+        r = requests.get(request_url, verify=False)  # Make REST call to local microservice
         print(r)
     except Exception as e:
         print(e)
 
 
-# Start IDLE mode
-server.idle()
+server.idle()  # Start IDLE mode
 print("Connection is now in IDLE mode.")
-start_time = time.monotonic()
+start_time = time.monotonic()  # Start timer
 
 while True:
     try:
-        responses = server.idle_check(timeout=TIMEOUT_SECONDS)
-        if time.monotonic() - start_time > 13*60:
-            print("Resetting IMAP connection.")
+        responses = server.idle_check(timeout=TIMEOUT_SECONDS)  # Long poll for message
+        if time.monotonic() - start_time > 13*60:  # Apparently 13min is sweet-spot for refreshing idle
+            print("Resetting IMAP idle.")
             server.idle_done()
             server.idle()
             start_time = time.monotonic()
         if responses:
-            if responses[0][1].decode("utf-8") == "EXISTS":
+            if responses[0][1].decode("utf-8") == "EXISTS":  # Response-state = EXISTS == new email
                 print(f"Server sent:{responses}")
                 read_incoming_message()
     except Exception as e:
         print(e)
-        server.idle_done()
-        print("\nIDLE mode done")
-        server.logout()
-        break
 
 
