@@ -4,6 +4,7 @@ import requests
 from config import *
 from imapclient import IMAPClient
 
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 server = IMAPClient(HOST)
 server.login(USERNAME, PASSWORD)
 server.select_folder('INBOX')
@@ -74,6 +75,7 @@ while True:
             start_time = time.monotonic()
         if responses:
             if responses[0][1].decode("utf-8") == "EXISTS":  # Response-state = EXISTS == new email
+                print("---------------------------------------")
                 print(f"Server sent:{responses}")
                 read_incoming_message()
     except Exception as e:
