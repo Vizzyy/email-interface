@@ -24,11 +24,13 @@ def read_incoming_message():
             for mail_id, data in c.fetch(messages[0], ['BODY[TEXT]']).items():
                 body = data[b'BODY[TEXT]'].decode("utf-8")
                 print(body)
-                regex = r'(<div dir="ltr">)(.+)(<br><\/div>)'
+                #regex = r'(<div dir="ltr">)(.+)(<br><\/div>)'
+                regex = r'((light|door) \w+ \w*)'
                 if re.search(regex, body):
                     match = re.search(regex, body)
-                    print(f"message: {match.group(2)}")
-                    execute_message(match.group(2))
+                    print(match)
+                    print(f"message: {match.group(1)}")
+                    execute_message(match.group(1))
         else:
             print("No messages returned from gmail query.")
 
