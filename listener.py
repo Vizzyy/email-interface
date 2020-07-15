@@ -24,8 +24,7 @@ def read_incoming_message():
             for mail_id, data in c.fetch(messages[0], ['BODY[TEXT]']).items():
                 body = data[b'BODY[TEXT]'].decode("utf-8")
                 print(body)
-                #regex = r'(<div dir="ltr">)(.+)(<br><\/div>)'
-                regex = r'((light|door) \w+ \w*)'
+                regex = r'((light|door) \w+ ?\w*)'
                 if re.search(regex, body):
                     match = re.search(regex, body)
                     print(match)
