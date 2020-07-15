@@ -37,7 +37,7 @@ def read_incoming_message():
 
 def execute_message(message):
     try:
-        tokenized_message = message.strip().lower().split(" ")
+        tokenized_message = message.strip().split(" ")
         request_url = ""
         print(f"tokenized_message: {tokenized_message}")
         if tokenized_message[0] == "light":
