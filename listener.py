@@ -4,6 +4,7 @@ import requests
 from config import *
 from imapclient import IMAPClient
 
+# REST calls are being made entirely within intranet, no need to validate host certificate
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 server = IMAPClient(HOST)
 server.login(USERNAME, PASSWORD)
@@ -23,11 +24,15 @@ def read_incoming_message():
             messages = c.gmail_search(f"newer_than:1d")
             messages.reverse()  # Newest message should be 0 position
             if len(messages) > 0:  # If there are any messages
-                for mail_id, data in c.fetch(messages[0], ['RFC822']).items():  # Get first message
+                for mail_id, data in c.fetch(messages[0],
+                                             ['RFC822', b'BODY[HEADER.FIELDS (FROM)]']).items():  # Get first message
                     rfc = data[b'RFC822'].decode("utf-8")  # RFC = headers + body
+                    # We need to grab the sender field directly from header
+                    sender_address = data[b'BODY[HEADER.FIELDS (FROM)]'].decode("utf-8")
+                    print(sender_address)
                     command_regex = r'((light|door) \w+ ?\w*)'
                     sender_regex = r'('+SENDER_REGEX+')'
-                    if re.search(sender_regex, rfc):  # Is trigger from approved source?
+                    if re.search(sender_regex, sender_address):  # Is trigger from approved source?
                         print(rfc)
                         match = re.search(command_regex, rfc)  # Does body include valid command?
                         if not match:
