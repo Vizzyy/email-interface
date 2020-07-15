@@ -45,7 +45,7 @@ def execute_message(message):
             print("Execute Door")
             request_url = f"{DOOR_HOST}{tokenized_message[1]}{LOG_ENTRY}"
         print(request_url)
-        r = requests.get(request_url)
+        r = requests.get(request_url, verify=False)
         print(r)
     except Exception as e:
         print(e)
