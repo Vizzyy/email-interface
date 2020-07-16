@@ -81,19 +81,17 @@ print("Connection is now in IDLE mode.")
 start_time = time.monotonic()  # Start timer
 
 while True:
-    try:
-        responses = server.idle_check(timeout=TIMEOUT_SECONDS)  # Long poll for message
-        if time.monotonic() - start_time > 13*60:  # Apparently 13min is sweet-spot for refreshing idle
-            print("Resetting IMAP idle.")
-            server.idle_done()
-            server.idle()
-            start_time = time.monotonic()
-        if responses:
-            if responses[0][1].decode("utf-8") == "EXISTS":  # Response-state = EXISTS == new email
-                print("------------------------------------------------------------------------------")
-                print(f"Server sent:{responses}")
-                read_incoming_message()
-    except Exception as e:
-        print(e)
+    # We don't all wrap this in Try/Catch to let Systemd restart if failure
+    responses = server.idle_check(timeout=TIMEOUT_SECONDS)  # Long poll for message
+    if time.monotonic() - start_time > 13*60:  # Apparently 13min is sweet-spot for refreshing idle
+        print("Resetting IMAP idle.")
+        start_time = time.monotonic()
+        server.idle_done()
+        server.idle()
+    if responses:
+        if responses[0][1].decode("utf-8") == "EXISTS":  # Response-state = EXISTS == new email
+            print("------------------------------------------------------------------------------")
+            print(f"Server sent:{responses}")
+            read_incoming_message()
 
 
