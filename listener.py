@@ -26,10 +26,11 @@ def read_incoming_message():
             if len(messages) > 0:  # If there are any messages
                 for mail_id, data in c.fetch(messages[0],  # Get first message
                                              ['RFC822', b'BODY[HEADER.FIELDS (FROM)]']).items():
+                    print(f"Mail_ID: {mail_id}")
                     rfc = data[b'RFC822'].decode("utf-8")  # RFC = headers + body
                     # We need to grab the sender field directly from header
                     sender_address = data[b'BODY[HEADER.FIELDS (FROM)]'].decode("utf-8")
-                    print(sender_address)
+                    print(sender_address.strip())
                     command_regex = r'((light|door) \w+ ?\w*)'
                     passphrase_regex = rf'{EMAIL_PASSPHRASE}'
                     sender_regex = rf'{SENDER_REGEX}'
@@ -37,13 +38,12 @@ def read_incoming_message():
                     if re.search(passphrase_regex, rfc):
                         print("Found valid passphrase.")
                     else:
-                        print("*******************************************************")
-                        print("    Message is missing passphrase. Will not execute.")
-                        print("*******************************************************")
+                        print("Message is missing passphrase. Removing SEEN flag.")
+                        c.remove_flags(mail_id, ['\\Seen'])  # Remove "Opened" flag from message
                         return
 
                     if re.search(sender_regex, sender_address):  # Is message from approved source?
-                        print(rfc)
+                        # print(rfc)
                         match = re.search(command_regex, rfc)  # Does body include valid command?
                         if not match:
                             print("No execution keywords found.")
