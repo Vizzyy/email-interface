@@ -24,19 +24,29 @@ def read_incoming_message():
             messages = c.gmail_search(f"newer_than:1d")
             messages.reverse()  # Newest message should be 0 position
             if len(messages) > 0:  # If there are any messages
-                for mail_id, data in c.fetch(messages[0],
-                                             ['RFC822', b'BODY[HEADER.FIELDS (FROM)]']).items():  # Get first message
+                for mail_id, data in c.fetch(messages[0],  # Get first message
+                                             ['RFC822', b'BODY[HEADER.FIELDS (FROM)]']).items():
                     rfc = data[b'RFC822'].decode("utf-8")  # RFC = headers + body
                     # We need to grab the sender field directly from header
                     sender_address = data[b'BODY[HEADER.FIELDS (FROM)]'].decode("utf-8")
                     print(sender_address)
                     command_regex = r'((light|door) \w+ ?\w*)'
-                    sender_regex = r'('+SENDER_REGEX+')'
-                    if re.search(sender_regex, sender_address):  # Is trigger from approved source?
+                    passphrase_regex = rf'{EMAIL_PASSPHRASE}'
+                    sender_regex = rf'{SENDER_REGEX}'
+
+                    if re.search(passphrase_regex, rfc):
+                        print("Found valid passphrase.")
+                    else:
+                        print("*******************************************************")
+                        print("    Message is missing passphrase. Will not execute.")
+                        print("*******************************************************")
+                        return
+
+                    if re.search(sender_regex, sender_address):  # Is message from approved source?
                         print(rfc)
                         match = re.search(command_regex, rfc)  # Does body include valid command?
                         if not match:
-                            print("No execution keyword found.")
+                            print("No execution keywords found.")
                             return
                         print(f"message: {match.group(1)}")
                         execute_message(match.group(1))  # If valid, then execute
@@ -80,7 +90,7 @@ while True:
             start_time = time.monotonic()
         if responses:
             if responses[0][1].decode("utf-8") == "EXISTS":  # Response-state = EXISTS == new email
-                print("---------------------------------------")
+                print("------------------------------------------------------------------------------")
                 print(f"Server sent:{responses}")
                 read_incoming_message()
     except Exception as e:
